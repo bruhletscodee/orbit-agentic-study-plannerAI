@@ -1,165 +1,91 @@
-
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1020">
+  <meta name="theme-color" content="#0b0d12">
   <title>ORBIT — Agentic Study Planner</title>
   <link rel="stylesheet" href="style.css">
   <script src="app.js" defer></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="shell topbar-inner">
-      <a class="brand" href="./">
-        <span class="brand-mark">O</span>
-        <span>ORBIT</span>
-      </a>
-      <span class="topbar-label">AGENTIC STUDY PLANNER</span>
-      <span class="live-pill"><i></i> READY</span>
+  <header>
+    <div class="brand">
+      <span class="orb">✦</span>
+      <div>
+        <b>ORBIT</b>
+        <small>AGENTIC STUDY PLANNER</small>
+      </div>
     </div>
+    <span class="pill">PLAN · ACT · REFLECT</span>
   </header>
 
-  <main class="shell">
+  <main>
     <section class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">YOUR PERSONAL AI STUDY ASSISTANT</p>
-        <h1>Make your next move<br><span>count.</span></h1>
-        <p class="hero-subtitle">
-          A goal-driven study agent that builds a plan, prioritizes your work,
-          checks workload, and produces a practical report.
-        </p>
-      </div>
-
-      <div class="orbit-art" aria-hidden="true">
-        <div class="orbit-ring ring-one"></div>
-        <div class="orbit-ring ring-two"></div>
-        <div class="orbit-core">O</div>
-        <span class="orbit-dot dot-one"></span>
-        <span class="orbit-dot dot-two"></span>
-        <span class="orbit-dot dot-three"></span>
-      </div>
+      <p class="eyebrow">YOUR PERSONAL AI AGENT</p>
+      <h1>Turn goals into<br><em>done.</em></h1>
+      <p class="sub">Tell ORBIT what you need to achieve. It will create a day-by-day plan, organise tasks, check workload, and produce a practical report.</p>
     </section>
 
-    <section class="panel setup-panel">
-      <div class="section-head">
+    <section class="panel">
+      <label for="goal">What do you want to achieve?</label>
+      <textarea id="goal" rows="4" placeholder="Example: Prepare for my FEM exam. Revise high-weightage concepts and solve previous-year questions."></textarea>
+
+      <div class="controls">
         <div>
-          <p class="eyebrow">01 / CONFIGURATION</p>
-          <h2>Build your study plan</h2>
-        </div>
-        <span class="section-number">01</span>
-      </div>
-
-      <div class="form-group">
-        <label for="goal">What do you want to achieve?</label>
-        <textarea
-          id="goal"
-          rows="4"
-          placeholder="Example: Prepare for my FEM exam, revise high-weightage concepts, and solve previous-year questions."
-        ></textarea>
-      </div>
-
-      <div class="input-grid">
-        <div class="form-group">
           <label for="hours">Study hours per day</label>
-          <input type="number" id="hours" min="1" max="12" value="4">
+          <input id="hours" type="number" min="1" max="12" value="4">
         </div>
-
-        <div class="form-group">
+        <div>
           <label for="days">Planning period (days)</label>
-          <input type="number" id="days" min="1" max="30" value="7">
+          <input id="days" type="number" min="1" max="30" value="7">
         </div>
       </div>
 
-      <button type="button" id="runAgent" class="primary-button">
-        <span class="button-symbol">✦</span>
-        Run agent
-        <span class="button-arrow">→</span>
-      </button>
-
-      <p class="privacy-note">
-        Your plan is generated through the Gemini API configured in
-        <code>app.js</code>.
-      </p>
+      <button type="button" id="runAgent" class="primary">✦ Run agent</button>
+      <p class="hint">ORBIT uses the Gemini API configured in <code>app.js</code>.</p>
     </section>
 
     <section class="workspace">
-      <div class="section-head workspace-head">
-        <div>
-          <p class="eyebrow">02 / YOUR WORKSPACE</p>
-          <h2>Study dashboard</h2>
+      <div class="panel">
+        <div class="sectionhead">
+          <div>
+            <p class="eyebrow">AUTONOMOUS WORKFLOW</p>
+            <h2>Agent activity</h2>
+          </div>
+          <span id="status" class="status">Waiting</span>
         </div>
-        <span class="section-number">02</span>
+        <div id="activity" class="activity">
+          <p class="empty">Your agent's planning, tool calls, and reflections will appear here.</p>
+        </div>
       </div>
 
-      <div id="status" class="status">
-        <span class="status-light"></span>
-        Ready to plan. Enter your goal above.
-      </div>
-
-      <div class="dashboard-grid">
-        <section class="panel activity-panel">
-          <div class="panel-title">
-            <span class="panel-icon">↗</span>
-            <div>
-              <h3>Agent activity</h3>
-              <p>Reasoning and tool execution</p>
-            </div>
+      <div class="panel">
+        <div class="sectionhead">
+          <div>
+            <p class="eyebrow">EXECUTION BOARD</p>
+            <h2>Your tasks</h2>
           </div>
-
-          <div id="activity" class="activity-list">
-            <p class="empty">Agent activity will appear here.</p>
-          </div>
-        </section>
-
-        <section class="panel tasks-panel">
-          <div class="panel-title panel-title-row">
-            <div class="panel-title">
-              <span class="panel-icon">✓</span>
-              <div>
-                <h3>Your tasks</h3>
-                <p>Track your progress</p>
-              </div>
-            </div>
-
-            <button type="button" id="clearTasks" class="text-button">
-              Clear
-            </button>
-          </div>
-
-          <div id="tasks" class="tasks-list">
-            <p class="empty">Tasks created by the agent will appear here.</p>
-          </div>
-        </section>
-      </div>
-
-      <section class="panel report-panel">
-        <div class="panel-title panel-title-row">
-          <div class="panel-title">
-            <span class="panel-icon">▤</span>
-            <div>
-              <h3>Study report</h3>
-              <p>Your plan, priorities, and next actions</p>
-            </div>
-          </div>
-
-          <button type="button" id="copyReport" class="secondary-button">
-            Copy report
-          </button>
+          <button type="button" id="clearTasks" class="ghost">Clear</button>
         </div>
-
-        <div id="report" class="report-content empty">
-          Your final report will appear here after the agent runs.
+        <div id="tasks" class="tasks">
+          <p class="empty">Tasks created by the agent will appear here.</p>
         </div>
-      </section>
+      </div>
     </section>
 
-    <footer class="footer">
-      <span>ORBIT</span>
-      <span>Plan smarter. Learn better.</span>
-      <span>AI STUDY SYSTEM</span>
-    </footer>
+    <section class="panel">
+      <div class="sectionhead">
+        <div>
+          <p class="eyebrow">FINAL OUTPUT</p>
+          <h2>Agent report</h2>
+        </div>
+        <button type="button" id="copyReport" class="ghost">Copy report</button>
+      </div>
+      <div id="report" class="report empty">Run the agent to generate a plan and report.</div>
+    </section>
+
+    <footer>ORBIT · Agentic study planning · Plan smarter. Learn better.</footer>
   </main>
 </body>
 </html>
