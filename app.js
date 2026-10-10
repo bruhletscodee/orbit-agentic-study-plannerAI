@@ -1,11 +1,8 @@
-
 "use strict";
 
 /*
  * ORBIT — Agentic Study Planner
  * Gemini Interactions API + executable agent tools.
- *
- * This demo sends the API key directly from the browser to Google.
  */
 
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/interactions";
@@ -24,11 +21,12 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 function logActivity(message) {
-  state.activity.push({
+  const item = {
     message: String(message),
     time: new Date().toLocaleTimeString()
-  });
+  };
 
+  state.activity.push(item);
   renderActivity();
 }
 
@@ -89,7 +87,6 @@ function renderTasks() {
     checkbox.addEventListener("change", () => {
       task.completed = checkbox.checked;
       renderTasks();
-
       logActivity(
         (task.completed ? "Completed: " : "Reopened: ") + task.title
       );
@@ -123,18 +120,12 @@ function renderTasks() {
 
 function setStatus(text, mode = "") {
   const status = $("status");
-  status.replaceChildren();
-
-  const light = document.createElement("span");
-  light.className = "status-light";
-
-  status.append(light, document.createTextNode(text));
+  status.textContent = text;
   status.className = "status" + (mode ? " " + mode : "");
 }
 
 function setReport(text) {
   state.report = String(text || "");
-
   const report = $("report");
   report.classList.remove("empty");
   report.textContent = state.report || "No report generated yet.";
@@ -146,7 +137,8 @@ function getToolDefinitions() {
       type: "function",
       name: "create_tasks",
       description:
-        "Create structured study tasks within the available hours and planning period.",
+        "Create structured study tasks for the user's goal. " +
+        "Keep the schedule within the available hours and planning horizon.",
       parameters: {
         type: "object",
         properties: {
@@ -207,7 +199,7 @@ function getToolDefinitions() {
       type: "function",
       name: "reflect_progress",
       description:
-        "Record a reflection on task completion, gaps and improvements.",
+        "Record a reflection on task completion, gaps and recommended adjustments.",
       parameters: {
         type: "object",
         properties: {
@@ -234,9 +226,10 @@ function getToolDefinitions() {
 }
 
 function normaliseTask(raw, index, horizon) {
-  const requestedPriority = String(raw.priority || "medium").toLowerCase();
-  const priority = ["high", "medium", "low"].includes(requestedPriority)
-    ? requestedPriority
+  const priority = ["high", "medium", "low"].includes(
+    String(raw.priority).toLowerCase()
+  )
+    ? String(raw.priority).toLowerCase()
     : "medium";
 
   const requestedDay = Number(raw.day);
@@ -251,9 +244,10 @@ function normaliseTask(raw, index, horizon) {
         ? Math.min(requestedHours, 24)
         : 1,
     priority,
-    day: Number.isFinite(requestedDay)
-      ? Math.max(1, Math.min(Math.floor(requestedDay), horizon))
-      : 1,
+    day:
+      Number.isFinite(requestedDay)
+        ? Math.max(1, Math.min(Math.floor(requestedDay), horizon))
+        : 1,
     completed: false
   };
 }
@@ -289,30 +283,32 @@ function executeTool(name, args, horizon, dailyHours) {
       state.tasks = proposed;
       renderTasks();
 
+      const result = {
+        success: true,
+        taskCount: state.tasks.length,
+        overloadedDays,
+        dailyHourLimit: dailyHours,
+        message: overloadedDays.length
+          ? "Tasks created, but the listed days exceed the daily hour limit. Adjust the plan."
+          : "Tasks created successfully."
+      };
+
       logActivity(
         "Tool create_tasks: created " + proposed.length + " task(s)."
       );
 
       if (overloadedDays.length) {
         logActivity(
-          "Schedule warning: daily limit exceeded on day(s): " +
+          "Schedule warning: daily hour limit exceeded on day(s): " +
           overloadedDays.join(", ") + "."
         );
       }
 
-      return {
-        success: true,
-        taskCount: state.tasks.length,
-        overloadedDays,
-        dailyHourLimit: dailyHours,
-        message: overloadedDays.length
-          ? "Some days exceed the daily hour limit. Adjust the plan."
-          : "Tasks created successfully."
-      };
+      return result;
     }
 
     case "list_tasks": {
-      const tasks = state.tasks.map((task) => ({
+      const result = state.tasks.map((task) => ({
         title: task.title,
         description: task.description,
         hours: task.hours,
@@ -321,11 +317,11 @@ function executeTool(name, args, horizon, dailyHours) {
         completed: task.completed
       }));
 
-      logActivity("Tool list_tasks: inspected " + tasks.length + " task(s).");
+      logActivity("Tool list_tasks: inspected " + result.length + " task(s).");
 
       return {
-        count: tasks.length,
-        tasks
+        count: result.length,
+        tasks: result
       };
     }
 
@@ -361,19 +357,21 @@ function executeTool(name, args, horizon, dailyHours) {
     case "reflect_progress": {
       const total = state.tasks.length;
       const completed = state.tasks.filter((task) => task.completed).length;
+      const pending = total - completed;
 
       const result = {
         reflection: String(args.reflection),
         totalTasks: total,
         completedTasks: completed,
-        pendingTasks: total - completed,
+        pendingTasks: pending,
         completionRate: total
           ? Math.round((completed / total) * 100)
           : 0
       };
 
       logActivity(
-        "Tool reflect_progress: " + completed + "/" + total + " tasks completed."
+        "Tool reflect_progress: " +
+        completed + "/" + total + " tasks completed."
       );
 
       return result;
@@ -398,7 +396,7 @@ async function callGemini(apiKey, input, previousInteractionId) {
   const payload = {
     model: MODEL,
     tools: getToolDefinitions(),
-    input
+    input: input
   };
 
   if (previousInteractionId) {
@@ -414,8 +412,8 @@ async function callGemini(apiKey, input, previousInteractionId) {
     body: JSON.stringify(payload)
   });
 
-  const responseText = await response.text();
   let data;
+  const responseText = await response.text();
 
   try {
     data = JSON.parse(responseText);
@@ -428,7 +426,9 @@ async function callGemini(apiKey, input, previousInteractionId) {
 
   if (!response.ok) {
     const detail =
-      data?.error?.message || responseText || ("HTTP " + response.status);
+      data?.error?.message ||
+      responseText ||
+      ("HTTP " + response.status);
 
     throw new Error(
       "Gemini API error (HTTP " + response.status + "): " +
@@ -458,7 +458,10 @@ function getTextFromResponse(data) {
   for (const step of steps) {
     if (!step) continue;
 
-    if (typeof step.text === "string" && step.text.trim()) {
+    if (
+      typeof step.text === "string" &&
+      step.text.trim()
+    ) {
       pieces.push(step.text.trim());
     }
 
@@ -501,13 +504,21 @@ async function runAgent() {
     return;
   }
 
-  if (!Number.isFinite(dailyHours) || dailyHours < 1 || dailyHours > 12) {
+  if (
+    !Number.isFinite(dailyHours) ||
+    dailyHours < 1 ||
+    dailyHours > 12
+  ) {
     alert("Available hours per day must be between 1 and 12.");
     return;
   }
 
-  if (!Number.isInteger(horizon) || horizon < 1 || horizon > 30) {
-    alert("Planning period must be between 1 and 30 days.");
+  if (
+    !Number.isInteger(horizon) ||
+    horizon < 1 ||
+    horizon > 30
+  ) {
+    alert("Planning horizon must be between 1 and 30 days.");
     return;
   }
 
@@ -527,7 +538,7 @@ async function runAgent() {
   setStatus("Running", "running");
 
   logActivity("Starting ORBIT agent.");
-  logActivity("Connecting to " + MODEL + ".");
+  logActivity("Goal received. Connecting to " + MODEL + ".");
 
   const systemInstructions = `
 You are ORBIT, an autonomous study-planning agent.
@@ -541,24 +552,23 @@ USER CONSTRAINTS:
 - User goal: ${goal}
 
 MANDATORY AGENT WORKFLOW:
-1. Analyse the goal and identify topics, dependencies, and deliverables.
-2. Call create_tasks to create concrete tasks across the planning period.
-3. Keep the total planned task hours per day within ${dailyHours} hours.
-   If overloadedDays is returned, correct the schedule by calling create_tasks again.
-4. Call list_tasks to inspect the tasks.
+1. Analyse the goal and identify the topics, dependencies, and deliverables.
+2. Call create_tasks to create concrete tasks distributed across the planning horizon.
+3. Keep the total planned task hours on each day within ${dailyHours} hours. If a tool reports overloadedDays, fix the plan by calling create_tasks again.
+4. Call list_tasks to inspect the created tasks.
 5. Call prioritize_tasks to organise tasks by importance and urgency.
 6. Call reflect_progress to identify risks, missing coverage, and improvements.
-7. Call write_report to save the final report.
+7. Call write_report to save a readable final report.
 
 RULES:
-- Do not claim a tool was called unless you actually called it.
+- Do not claim you called a tool unless you actually called it.
 - Use the tools, not merely a prose description of the workflow.
 - Every task must be specific and actionable.
 - Respect the user's time constraints.
-- Do not claim studying has been completed when only a plan has been created.
+- Do not claim that studying has been completed when only a plan has been created.
 - The report should include the goal, day-by-day schedule, priorities, risks, and next actions.
-- Correct overloaded days before producing the final report.
-- After the required tools succeed, provide a short final summary.
+- If you receive an overloaded-day warning, correct it before producing the final report.
+- After all required tools have succeeded, provide a short final summary.
 `;
 
   let previousInteractionId = null;
@@ -583,16 +593,19 @@ RULES:
       const calls = getFunctionCalls(data);
 
       if (!calls.length) {
-        const responseText = getTextFromResponse(data);
+        const text = getTextFromResponse(data);
 
-        if (responseText && !state.report) {
+        if (text) {
           logActivity("Agent returned its response.");
-          setReport(responseText);
+
+          if (!state.report) {
+            setReport(text);
+          }
         }
 
         if (!state.report) {
           setReport(
-            responseText ||
+            text ||
             "The agent stopped without generating a report. Please try again."
           );
         }
@@ -642,7 +655,7 @@ RULES:
 
         functionResults.push({
           type: "function_result",
-          name,
+          name: name,
           call_id: call.id,
           result: [
             {
