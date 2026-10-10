@@ -18,7 +18,7 @@ const MODEL = "gemini-3.8-flash";
 
 // Paste your NEW Gemini API key between the quotes.
 // This line will be public in your GitHub repository.
-const GEMINI_API_KEY = "AQ.Ab8RN6JzfLtwjDEiegHrE2exTtzQF_ZNzyCaUv5F5EmLVbA9cw";
+const GEMINI_API_KEY = "AIzaSyCtT3kJQSWmVemiV8zY6G4FOpn6N63lLfQ";
 
 const state = {
   tasks: [],
