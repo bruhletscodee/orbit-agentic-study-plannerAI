@@ -1,0 +1,109 @@
+
+{
+  "name": "orbit_agent",
+  "description": "An agentic study planner that creates, organises, prioritises and reviews study tasks.",
+  "tools": [
+    {
+      "name": "create_tasks",
+      "description": "Create study tasks from the user's goal. Each task should have a title, description, estimated hours, priority, and day.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "description": "The study tasks to add to the task board.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "Short task title."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Specific actions needed to complete the task."
+                },
+                "hours": {
+                  "type": "number",
+                  "description": "Estimated study time in hours."
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": ["high", "medium", "low"]
+                },
+                "day": {
+                  "type": "integer",
+                  "description": "Planned day number, starting at 1."
+                }
+              },
+              "required": [
+                "title",
+                "description",
+                "hours",
+                "priority",
+                "day"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["tasks"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list_tasks",
+      "description": "Return all current study tasks, including their completion status.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "prioritize_tasks",
+      "description": "Reorder unfinished study tasks by importance and urgency.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Explain the prioritisation strategy."
+          }
+        },
+        "required": ["reason"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "reflect_progress",
+      "description": "Inspect task completion and identify gaps, risks and recommended adjustments.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reflection": {
+            "type": "string",
+            "description": "What is going well, what is missing, and what should happen next."
+          }
+        },
+        "required": ["reflection"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "write_report",
+      "description": "Create a final study plan report with a summary, schedule, priorities and recommendations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "report": {
+            "type": "string",
+            "description": "The complete final report in readable text."
+          }
+        },
+        "required": ["report"],
+        "additionalProperties": false
+      }
+    }
+  ]
+}
