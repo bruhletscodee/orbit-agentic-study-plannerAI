@@ -1,24 +1,18 @@
-
 "use strict";
 
 /*
  * ORBIT — Agentic Study Planner
- * Gemini Interactions API with executable agent tools.
+ * Gemini Interactions API + executable agent tools.
  *
- * SECURITY WARNING:
- * A key embedded in public JavaScript is visible to everyone.
- * Use a disposable key with appropriate restrictions.
- * Never use a sensitive production key here.
+ * SECURITY:
+ * This browser demo sends the API key directly to Google.
+ * Never hardcode your API key or commit it to GitHub.
  */
 
 const API_URL =
   "https://generativelanguage.googleapis.com/v1beta/interactions";
 
 const MODEL = "gemini-3.8-flash";
-
-// Paste your NEW Gemini API key between the quotes.
-// This line will be public in your GitHub repository.
-const GEMINI_API_KEY = "AIzaSyCtT3kJQSWmVemiV8zY6G4FOpn6N63lLfQ";
 
 const state = {
   tasks: [],
@@ -29,7 +23,9 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 
-/* -------------------- Activity log -------------------- */
+/* --------------------------------------------------
+   ACTIVITY LOG
+-------------------------------------------------- */
 
 function logActivity(message) {
   state.activity.push({
@@ -42,9 +38,11 @@ function logActivity(message) {
 
 function renderActivity() {
   const container = $("activity");
+  if (!container) return;
+
   container.replaceChildren();
 
-  if (state.activity.length === 0) {
+  if (!state.activity.length) {
     const empty = document.createElement("p");
     empty.className = "empty";
     empty.textContent = "Agent activity will appear here.";
@@ -68,21 +66,22 @@ function renderActivity() {
   }
 }
 
-function setStatus(message, mode = "") {
-  $("status").textContent = message;
-  $("status").className = "status" + (mode ? " " + mode : "");
-}
-
-/* -------------------- Task board -------------------- */
+/* --------------------------------------------------
+   TASK BOARD
+-------------------------------------------------- */
 
 function renderTasks() {
   const container = $("tasks");
+  if (!container) return;
+
   container.replaceChildren();
 
-  if (state.tasks.length === 0) {
+  if (!state.tasks.length) {
     const empty = document.createElement("p");
     empty.className = "empty";
-    empty.textContent = "Tasks created by the agent will appear here.";
+    empty.textContent =
+      "Tasks created by the agent will appear here.";
+
     container.appendChild(empty);
     return;
   }
@@ -99,15 +98,19 @@ function renderTasks() {
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = task.completed;
-    checkbox.setAttribute("aria-label", "Complete " + task.title);
+    checkbox.checked = Boolean(task.completed);
+    checkbox.setAttribute(
+      "aria-label",
+      "Mark " + task.title + " complete"
+    );
 
     checkbox.addEventListener("change", () => {
       task.completed = checkbox.checked;
       renderTasks();
 
       logActivity(
-        (task.completed ? "Completed: " : "Reopened: ") + task.title
+        (task.completed ? "Completed: " : "Reopened: ") +
+        task.title
       );
     });
 
@@ -123,31 +126,45 @@ function renderTasks() {
     priority.className = "tag " + task.priority;
     priority.textContent = task.priority.toUpperCase() + " PRIORITY";
 
-    const hours = document.createElement("span");
-    hours.className = "tag";
-    hours.textContent = task.hours + " hour(s)";
+    const duration = document.createElement("span");
+    duration.className = "tag";
+    duration.textContent = task.hours + " hour(s)";
 
     const day = document.createElement("span");
     day.className = "tag";
     day.textContent = "DAY " + task.day;
 
-    meta.append(priority, hours, day);
+    meta.append(priority, duration, day);
     card.append(top, description, meta);
     container.appendChild(card);
   }
 }
 
-/* -------------------- Report -------------------- */
+/* --------------------------------------------------
+   STATUS AND REPORT
+-------------------------------------------------- */
+
+function setStatus(message, mode = "") {
+  const status = $("status");
+  if (!status) return;
+
+  status.textContent = message;
+  status.className = "status" + (mode ? " " + mode : "");
+}
 
 function setReport(text) {
   state.report = String(text || "");
 
   const report = $("report");
+  if (!report) return;
+
   report.classList.remove("empty");
-  report.textContent = state.report || "No report generated.";
+  report.textContent = state.report || "No report generated yet.";
 }
 
-/* -------------------- Agent tool definitions -------------------- */
+/* --------------------------------------------------
+   GEMINI FUNCTION TOOL DEFINITIONS
+-------------------------------------------------- */
 
 function getToolDefinitions() {
   return [
@@ -155,8 +172,8 @@ function getToolDefinitions() {
       type: "function",
       name: "create_tasks",
       description:
-        "Create actionable study tasks for the user's goal. " +
-        "Keep task hours within the daily limit and schedule within the horizon.",
+        "Create structured study tasks for the user's goal. " +
+        "Respect the daily hours and planning horizon.",
       parameters: {
         type: "object",
         properties: {
@@ -192,7 +209,7 @@ function getToolDefinitions() {
     {
       type: "function",
       name: "list_tasks",
-      description: "Inspect all current tasks and their completion status.",
+      description: "List current study tasks and their completion status.",
       parameters: {
         type: "object",
         properties: {},
@@ -203,7 +220,7 @@ function getToolDefinitions() {
       type: "function",
       name: "prioritize_tasks",
       description:
-        "Sort unfinished study tasks by importance, urgency and prerequisites.",
+        "Prioritize unfinished tasks by urgency, importance and prerequisites.",
       parameters: {
         type: "object",
         properties: {
@@ -217,7 +234,7 @@ function getToolDefinitions() {
       type: "function",
       name: "reflect_progress",
       description:
-        "Review the plan and report gaps, risks and recommended adjustments.",
+        "Reflect on completion, gaps and recommended adjustments.",
       parameters: {
         type: "object",
         properties: {
@@ -230,7 +247,7 @@ function getToolDefinitions() {
     {
       type: "function",
       name: "write_report",
-      description: "Save the final study plan report.",
+      description: "Write and save the final study plan report.",
       parameters: {
         type: "object",
         properties: {
@@ -243,17 +260,21 @@ function getToolDefinitions() {
   ];
 }
 
-/* -------------------- Tool execution -------------------- */
+/* --------------------------------------------------
+   TASK VALIDATION
+-------------------------------------------------- */
 
 function normaliseTask(raw, index, horizon) {
-  const rawPriority = String(raw.priority || "medium").toLowerCase();
+  const allowedPriorities = ["high", "medium", "low"];
 
-  const priority = ["high", "medium", "low"].includes(rawPriority)
-    ? rawPriority
+  const candidatePriority = String(raw.priority || "").toLowerCase();
+
+  const priority = allowedPriorities.includes(candidatePriority)
+    ? candidatePriority
     : "medium";
 
-  const requestedHours = Number(raw.hours);
   const requestedDay = Number(raw.day);
+  const requestedHours = Number(raw.hours);
 
   return {
     id: "task-" + Date.now() + "-" + index,
@@ -261,7 +282,7 @@ function normaliseTask(raw, index, horizon) {
     description: String(raw.description || "").slice(0, 1200),
     hours:
       Number.isFinite(requestedHours) && requestedHours > 0
-        ? Math.min(requestedHours, 24)
+        ? Math.min(requestedHours, 12)
         : 1,
     priority,
     day: Number.isFinite(requestedDay)
@@ -271,6 +292,10 @@ function normaliseTask(raw, index, horizon) {
   };
 }
 
+/* --------------------------------------------------
+   LOCAL TOOL EXECUTION
+-------------------------------------------------- */
+
 function executeTool(name, args, horizon, dailyHours) {
   switch (name) {
     case "create_tasks": {
@@ -279,7 +304,7 @@ function executeTool(name, args, horizon, dailyHours) {
       }
 
       if (args.tasks.length > 60) {
-        throw new Error("Maximum 60 tasks per creation call.");
+        throw new Error("A maximum of 60 tasks can be created at once.");
       }
 
       const proposed = args.tasks.map((task, index) =>
@@ -296,19 +321,19 @@ function executeTool(name, args, horizon, dailyHours) {
       }
 
       const overloadedDays = [...dailyTotals.entries()]
-        .filter(([, total]) => total > dailyHours + 0.001)
+        .filter(([, hours]) => hours > dailyHours + 0.001)
         .map(([day]) => day);
 
       state.tasks = proposed;
       renderTasks();
 
       logActivity(
-        "create_tasks: created " + proposed.length + " task(s)."
+        "Tool create_tasks: created " + proposed.length + " task(s)."
       );
 
       if (overloadedDays.length) {
         logActivity(
-          "Schedule warning: daily hour limit exceeded on day(s) " +
+          "Schedule warning: daily hour limit exceeded on day(s): " +
           overloadedDays.join(", ") + "."
         );
       }
@@ -319,7 +344,7 @@ function executeTool(name, args, horizon, dailyHours) {
         overloadedDays,
         dailyHourLimit: dailyHours,
         message: overloadedDays.length
-          ? "Some days exceed the limit. Revise the plan."
+          ? "Some days exceed the daily hour limit. Revise the schedule."
           : "Tasks created successfully."
       };
     }
@@ -334,7 +359,9 @@ function executeTool(name, args, horizon, dailyHours) {
         completed: task.completed
       }));
 
-      logActivity("list_tasks: inspected " + tasks.length + " task(s).");
+      logActivity(
+        "Tool list_tasks: inspected " + tasks.length + " task(s)."
+      );
 
       return {
         count: tasks.length,
@@ -350,15 +377,21 @@ function executeTool(name, args, horizon, dailyHours) {
           return Number(a.completed) - Number(b.completed);
         }
 
-        return rank[a.priority] - rank[b.priority] || a.day - b.day;
+        return (
+          rank[a.priority] - rank[b.priority] ||
+          a.day - b.day
+        );
       });
 
       renderTasks();
-      logActivity("prioritize_tasks: " + String(args.reason));
+
+      logActivity(
+        "Tool prioritize_tasks: " + String(args.reason || "")
+      );
 
       return {
         success: true,
-        reason: String(args.reason),
+        reason: String(args.reason || ""),
         order: state.tasks.map((task) => ({
           title: task.title,
           priority: task.priority,
@@ -374,39 +407,45 @@ function executeTool(name, args, horizon, dailyHours) {
         (task) => task.completed
       ).length;
 
+      const pending = total - completed;
+
       const result = {
-        reflection: String(args.reflection),
+        reflection: String(args.reflection || ""),
         totalTasks: total,
         completedTasks: completed,
-        pendingTasks: total - completed,
+        pendingTasks: pending,
         completionRate: total
           ? Math.round((completed / total) * 100)
           : 0
       };
 
       logActivity(
-        "reflect_progress: " + completed + "/" + total + " complete."
+        "Tool reflect_progress: " +
+        completed + "/" + total + " tasks completed."
       );
 
       return result;
     }
 
     case "write_report": {
-      setReport(args.report);
-      logActivity("write_report: final report generated.");
+      setReport(args.report || "");
+
+      logActivity("Tool write_report: final report generated.");
 
       return {
         success: true,
-        reportLength: String(args.report).length
+        reportLength: String(args.report || "").length
       };
     }
 
     default:
-      throw new Error("Unknown tool: " + name);
+      throw new Error("Unknown tool requested: " + name);
   }
 }
 
-/* -------------------- Gemini API -------------------- */
+/* --------------------------------------------------
+   GEMINI API REQUEST
+-------------------------------------------------- */
 
 async function callGemini(apiKey, input, previousInteractionId) {
   const payload = {
@@ -415,7 +454,11 @@ async function callGemini(apiKey, input, previousInteractionId) {
     input
   };
 
-  // Continuation requires a stored interaction.
+  /*
+   * Do not set store:false here.
+   * The agent uses previous_interaction_id to continue the interaction.
+   */
+
   if (previousInteractionId) {
     payload.previous_interaction_id = previousInteractionId;
   }
@@ -423,8 +466,10 @@ async function callGemini(apiKey, input, previousInteractionId) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60000);
 
+  let response;
+
   try {
-    const response = await fetch(API_URL, {
+    response = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -433,34 +478,62 @@ async function callGemini(apiKey, input, previousInteractionId) {
       body: JSON.stringify(payload),
       signal: controller.signal
     });
-
-    let data;
-
-    try {
-      data = await response.json();
-    } catch {
-      throw new Error("Gemini returned a non-JSON response.");
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        data?.error?.message || "Gemini API error: HTTP " + response.status
-      );
-    }
-
-    return data;
   } catch (error) {
     if (error.name === "AbortError") {
       throw new Error(
-        "Gemini timed out after 60 seconds. Check your API access and network."
+        "Gemini request timed out after 60 seconds. Try again."
       );
     }
 
-    throw error;
+    throw new Error(
+      "Could not connect to Gemini. Check your internet connection. " +
+      error.message
+    );
   } finally {
     clearTimeout(timeout);
   }
+
+  const responseText = await response.text();
+
+  let data;
+
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    if (!response.ok) {
+      throw new Error(
+        "Gemini HTTP " + response.status +
+        ". Response: " + responseText.slice(0, 1200)
+      );
+    }
+
+    throw new Error(
+      "Gemini returned an invalid JSON response: " +
+      responseText.slice(0, 500)
+    );
+  }
+
+  /*
+   * This exposes Google's actual error message, such as:
+   * invalid API key, API not enabled, or key restriction failure.
+   */
+  if (!response.ok) {
+    console.error("Gemini API response:", data);
+
+    const detail = data?.error?.message || responseText;
+
+    throw new Error(
+      "Gemini API error: HTTP " +
+      response.status + " — " + String(detail).slice(0, 1500)
+    );
+  }
+
+  return data;
 }
+
+/* --------------------------------------------------
+   RESPONSE PARSING
+-------------------------------------------------- */
 
 function getFunctionCalls(data) {
   const steps = Array.isArray(data.steps) ? data.steps : [];
@@ -471,20 +544,34 @@ function getFunctionCalls(data) {
 }
 
 function getTextFromResponse(data) {
-  if (typeof data.output_text === "string" && data.output_text.trim()) {
+  if (
+    typeof data.output_text === "string" &&
+    data.output_text.trim()
+  ) {
     return data.output_text.trim();
   }
 
   const pieces = [];
+  const steps = Array.isArray(data.steps) ? data.steps : [];
 
-  for (const step of Array.isArray(data.steps) ? data.steps : []) {
-    if (typeof step?.text === "string" && step.text.trim()) {
+  for (const step of steps) {
+    if (!step) continue;
+
+    if (typeof step.text === "string" && step.text.trim()) {
       pieces.push(step.text.trim());
     }
 
-    if (Array.isArray(step?.content)) {
+    if (
+      step.type === "text" &&
+      typeof step.content === "string" &&
+      step.content.trim()
+    ) {
+      pieces.push(step.content.trim());
+    }
+
+    if (Array.isArray(step.content)) {
       for (const part of step.content) {
-        if (typeof part?.text === "string") {
+        if (part && typeof part.text === "string") {
           pieces.push(part.text);
         }
       }
@@ -494,27 +581,45 @@ function getTextFromResponse(data) {
   return pieces.join("\n").trim();
 }
 
-/* -------------------- Main agent loop -------------------- */
+/* --------------------------------------------------
+   MAIN AGENT LOOP
+-------------------------------------------------- */
 
 async function runAgent() {
   if (state.running) return;
 
-  const apiKey = GEMINI_API_KEY.trim();
-  const goal = $("goal").value.trim();
-  const dailyHours = Number($("hours").value);
-  const horizon = Number($("days").value);
+  const apiKeyInput = $("apiKey");
+  const goalInput = $("goal");
+  const hoursInput = $("hours");
+  const daysInput = $("days");
 
-  if (
-    !apiKey ||
-    apiKey === "PASTE_YOUR_NEW_API_KEY_HERE"
-  ) {
-    alert("Add your Gemini API key near the top of app.js.");
+  if (!apiKeyInput || !goalInput || !hoursInput || !daysInput) {
+    alert(
+      "ORBIT could not find one or more required HTML fields. " +
+      "Check that your HTML contains apiKey, goal, hours and days."
+    );
+    return;
+  }
+
+  const apiKey = apiKeyInput.value.trim();
+  const goal = goalInput.value.trim();
+  const dailyHours = Number(hoursInput.value);
+  const horizon = Number(daysInput.value);
+
+  if (!apiKey) {
+    alert("Enter your Gemini API key first.");
+    apiKeyInput.focus();
     return;
   }
 
   if (!goal) {
-    alert("Enter a study goal first.");
-    $("goal").focus();
+    alert("Describe the goal you want the agent to plan.");
+    goalInput.focus();
+    return;
+  }
+
+  if (goal.length > 1000) {
+    alert("Please limit your goal to 1,000 characters.");
     return;
   }
 
@@ -523,7 +628,7 @@ async function runAgent() {
     dailyHours < 1 ||
     dailyHours > 12
   ) {
-    alert("Available hours must be between 1 and 12.");
+    alert("Available hours per day must be between 1 and 12.");
     return;
   }
 
@@ -544,52 +649,64 @@ async function runAgent() {
   renderTasks();
   renderActivity();
 
-  $("report").textContent = "The agent is working...";
-  $("report").classList.add("empty");
+  if ($("report")) {
+    $("report").textContent = "The agent is working...";
+    $("report").classList.add("empty");
+  }
 
-  $("runAgent").disabled = true;
-  $("runAgent").textContent = "Agent running...";
+  const runButton = $("runAgent");
+
+  if (runButton) {
+    runButton.disabled = true;
+    runButton.textContent = "Agent running...";
+  }
+
   setStatus("Running", "running");
 
   logActivity("Starting ORBIT agent.");
   logActivity("Connecting to " + MODEL + ".");
 
-  const instructions = `
+  const systemInstructions = `
 You are ORBIT, an autonomous study-planning agent.
 
 USER GOAL:
 ${goal}
 
 CONSTRAINTS:
-- Available hours per day: ${dailyHours}.
+- Available study hours per day: ${dailyHours}.
 - Planning horizon: ${horizon} days.
+- Do not exceed the daily hour limit.
 
 MANDATORY WORKFLOW:
-1. Analyse the goal and identify topics, dependencies and deliverables.
-2. Call create_tasks to make concrete, actionable tasks.
-3. Check overloadedDays in the tool result. If any day exceeds the daily limit, revise the plan with create_tasks.
-4. Call list_tasks to inspect the created plan.
-5. Call prioritize_tasks to order tasks by importance and urgency.
-6. Call reflect_progress to identify gaps, risks and improvements.
-7. Call write_report to save a readable final report.
+1. Analyse the goal, topics, prerequisites and deliverables.
+2. Call create_tasks to create concrete study tasks.
+3. Ensure each day stays within ${dailyHours} hours.
+4. If overloadedDays is non-empty, call create_tasks again with a corrected plan.
+5. Call list_tasks to inspect the plan.
+6. Call prioritize_tasks to organize the tasks.
+7. Call reflect_progress to identify gaps and improvements.
+8. Call write_report to save the final report.
 
 RULES:
-- Actually call the tools; do not claim actions that were not performed.
-- Keep tasks within the planning horizon.
-- Keep daily hours realistic and within the stated limit.
-- Do not claim the user has completed work when only a plan exists.
-- Include a day-by-day schedule, priorities, risks and next actions in the report.
-- Finish the required tool workflow before giving a short final response.
+- Actually call the tools. Do not merely describe tool use.
+- Each task must be specific and actionable.
+- Distribute tasks across the ${horizon}-day planning horizon.
+- Include revision, practice and assessment when appropriate.
+- Do not claim that the user has completed studying.
+- The final report must include the goal, schedule, priorities, risks and next actions.
+- After all required tools succeed, provide a short final response.
 `;
 
   let previousInteractionId = null;
-  let input = instructions;
-  let finished = false;
+  let input = systemInstructions;
   const maxIterations = 12;
+  let finished = false;
 
   try {
     for (let iteration = 0; iteration < maxIterations; iteration++) {
-      logActivity("Agent reasoning cycle " + (iteration + 1) + ".");
+      logActivity(
+        "Agent reasoning cycle " + (iteration + 1) + "."
+      );
 
       const data = await callGemini(
         apiKey,
@@ -603,20 +720,24 @@ RULES:
 
       const calls = getFunctionCalls(data);
 
-      if (calls.length === 0) {
-        const text = getTextFromResponse(data);
+      if (!calls.length) {
+        const responseText = getTextFromResponse(data);
 
-        if (text && !state.report) {
-          setReport(text);
+        if (responseText) {
+          logActivity("Agent returned its response.");
+
+          if (!state.report) {
+            setReport(responseText);
+          }
         }
 
         if (!state.report) {
           setReport(
-            text || "The agent stopped without generating a report."
+            responseText ||
+            "The agent stopped without generating a report. Please try again."
           );
         }
 
-        logActivity("Agent returned its final response.");
         finished = true;
         break;
       }
@@ -631,16 +752,26 @@ RULES:
           try {
             args = JSON.parse(args);
           } catch {
-            throw new Error("Invalid arguments returned for " + name + ".");
+            throw new Error(
+              "Gemini returned invalid arguments for tool " + name + "."
+            );
           }
         }
 
-        if (!args || typeof args !== "object" || Array.isArray(args)) {
-          throw new Error("Invalid arguments returned for " + name + ".");
+        if (
+          !args ||
+          typeof args !== "object" ||
+          Array.isArray(args)
+        ) {
+          throw new Error(
+            "Gemini returned invalid arguments for tool " + name + "."
+          );
         }
 
         if (!call.id) {
-          throw new Error("Gemini returned a tool call without an ID.");
+          throw new Error(
+            "Gemini returned a function call without a call ID."
+          );
         }
 
         logActivity("Agent requested tool: " + name + ".");
@@ -648,14 +779,21 @@ RULES:
         let result;
 
         try {
-          result = executeTool(name, args, horizon, dailyHours);
-        } catch (error) {
+          result = executeTool(
+            name,
+            args,
+            horizon,
+            dailyHours
+          );
+        } catch (toolError) {
           result = {
             success: false,
-            error: error.message
+            error: toolError.message
           };
 
-          logActivity(name + " failed: " + error.message);
+          logActivity(
+            "Tool " + name + " error: " + toolError.message
+          );
         }
 
         functionResults.push({
@@ -676,11 +814,13 @@ RULES:
 
     if (!finished) {
       throw new Error(
-        "The agent reached its reasoning limit. Try a simpler goal."
+        "The agent reached its maximum of " +
+        maxIterations +
+        " reasoning cycles. Try a simpler goal."
       );
     }
 
-    if (state.tasks.length === 0) {
+    if (!state.tasks.length) {
       logActivity("Warning: no tasks were created.");
     }
 
@@ -697,46 +837,78 @@ RULES:
       setReport(
         "The agent encountered an error:\n\n" +
         error.message +
-        "\n\nCheck your API key, model availability and browser console."
+        "\n\nCheck the API key, key restrictions, model availability, " +
+        "and browser console."
       );
     }
 
-    alert("ORBIT error:\n" + error.message);
+    alert("ORBIT encountered an error:\n\n" + error.message);
 
   } finally {
     state.running = false;
-    $("runAgent").disabled = false;
-    $("runAgent").textContent = "✦ Run agent";
+
+    if (runButton) {
+      runButton.disabled = false;
+      runButton.textContent = "✦ Run agent";
+    }
   }
 }
 
-/* -------------------- Event handlers -------------------- */
+/* --------------------------------------------------
+   EVENT LISTENERS
+-------------------------------------------------- */
 
-$("runAgent").addEventListener("click", runAgent);
+if ($("runAgent")) {
+  $("runAgent").addEventListener("click", runAgent);
+}
 
-$("clearTasks").addEventListener("click", () => {
-  if (state.running) return;
+if ($("toggleKey") && $("apiKey")) {
+  $("toggleKey").addEventListener("click", () => {
+    const key = $("apiKey");
+    const visible = key.type === "password";
 
-  state.tasks = [];
-  renderTasks();
-  logActivity("Task board cleared.");
-});
+    key.type = visible ? "text" : "password";
+    $("toggleKey").textContent = visible ? "Hide" : "Show";
+  });
+}
 
-$("copyReport").addEventListener("click", async () => {
-  if (!state.report) {
-    alert("There is no report to copy yet.");
-    return;
-  }
+if ($("clearTasks")) {
+  $("clearTasks").addEventListener("click", () => {
+    if (state.running) return;
 
-  try {
-    await navigator.clipboard.writeText(state.report);
-    $("copyReport").textContent = "Copied!";
-  } catch {
-    alert("Clipboard access failed. Select and copy the report manually.");
-  }
-});
+    state.tasks = [];
+    renderTasks();
+    logActivity("Task board cleared.");
+  });
+}
 
-/* -------------------- Initial render -------------------- */
+if ($("copyReport")) {
+  $("copyReport").addEventListener("click", async () => {
+    if (!state.report) {
+      alert("There is no report to copy yet.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(state.report);
+
+      $("copyReport").textContent = "Copied!";
+
+      setTimeout(() => {
+        $("copyReport").textContent = "Copy report";
+      }, 1500);
+
+    } catch {
+      alert(
+        "Clipboard access failed. Select and copy the report manually."
+      );
+    }
+  });
+}
+
+/* --------------------------------------------------
+   INITIAL RENDER
+-------------------------------------------------- */
 
 renderActivity();
 renderTasks();
