@@ -9,7 +9,7 @@ const API_URL = "https://generativelanguage.googleapis.com/v1beta/interactions";
 const MODEL = "gemini-3.8-flash";
 
 // Paste your Gemini API key between these quotes.
-const GEMINI_API_KEY = "PASTE_YOUR_GEMINI_API_KEY_HERE";
+const GEMINI_API_KEY = "AQ.Ab8RN6IIG-ge8Sc3zn89g3fdMoyNoXze7c8aPrDWJuLIU5NRPg";
 
 const state = {
   tasks: [],
