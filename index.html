@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0b0d12">
-  <meta name="description" content="ORBIT is an agentic AI study planner that turns learning goals into structured plans.">
+  <meta name="description" content="ORBIT — Agentic AI Study Planner">
   <title>ORBIT — Agentic Study Planner</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -26,15 +26,15 @@
       <p class="eyebrow">YOUR PERSONAL AI AGENT</p>
       <h1>Turn goals into<br><em>done.</em></h1>
       <p class="sub">
-        Tell Orbit what you need to achieve. It creates a study plan,
-        executes tools to organise tasks, reviews progress, and produces a report.
+        Describe your goal. ORBIT plans the work, executes tools,
+        prioritises tasks, reviews the plan and generates a report.
       </p>
     </section>
 
     <section class="panel">
       <label for="goal">What do you want to achieve?</label>
       <textarea id="goal" rows="4"
-        placeholder="Example: Prepare for my FEM exam in 5 days. Cover meshing, boundary conditions, stiffness matrices, and modal analysis."></textarea>
+        placeholder="Prepare for my FEM exam in 5 days. Cover meshing, boundary conditions, element types, stiffness matrices and modal analysis."></textarea>
 
       <div class="controls">
         <div>
@@ -49,7 +49,7 @@
 
       <button id="runAgent" class="primary">✦ Run agent</button>
       <p class="hint">
-        Powered by Gemini. Generated plans should be reviewed before use.
+        AI-generated plans are suggestions. Review your schedule before following it.
       </p>
     </section>
 
@@ -63,9 +63,7 @@
           <span id="status" class="status">Waiting</span>
         </div>
         <div id="activity" class="activity">
-          <p class="empty">
-            Agent planning, tool calls, and reflections will appear here.
-          </p>
+          <p class="empty">Agent activity will appear here.</p>
         </div>
       </div>
 
@@ -92,12 +90,12 @@
         <button id="copyReport" class="ghost">Copy report</button>
       </div>
       <div id="report" class="report empty">
-        Run the agent to generate your study plan and report.
+        Your final study report will appear here.
       </div>
     </section>
 
     <footer>
-      ORBIT · Agentic AI demonstration · Human-in-the-loop task planning
+      ORBIT · Agentic AI demonstration · Human-in-the-loop planning
     </footer>
   </main>
 
