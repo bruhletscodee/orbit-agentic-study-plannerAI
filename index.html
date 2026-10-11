@@ -1,30 +1,133 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1020">
 <title>Orbit — Agentic Study Planner</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header><div class="brand"><span class="orb">✦</span><div><b>ORBIT</b><small>AGENTIC STUDY PLANNER</small></div></div><span class="pill">PLAN · ACT · REFLECT</span></header>
+
+<header>
+  <div class="brand">
+    <span class="orb">✦</span>
+    <div>
+      <b>ORBIT</b>
+      <small>AGENTIC STUDY PLANNER</small>
+    </div>
+  </div>
+  <span class="pill">PLAN · ACT · REFLECT</span>
+</header>
+
 <main>
-<section class="hero"><p class="eyebrow">YOUR PERSONAL AI AGENT</p><h1>Turn goals into<br><em>done.</em></h1><p class="sub">Tell Orbit what you need to achieve. It will make a plan, use tools to organise tasks, check progress, and revise the plan.</p></section>
-<section class="panel setup">
-<label for="apiKey">Gemini API key <span>(used in this browser session only)</span></label>
-<div class="keyrow"><input id="apiKey" type="password" placeholder="Paste your Gemini API key"><button id="toggleKey" class="ghost">Show</button></div>
-<p class="hint">Get a key from Google AI Studio. Do not share your key or commit it to GitHub.</p>
-</section>
-<section class="panel">
-<label for="goal">What do you want to achieve?</label>
-<textarea id="goal" rows="3" placeholder="Example: Prepare for my FEM exam in 5 days. I have 2 hours per day and need to cover meshing, boundary conditions, and modal analysis."></textarea>
-<div class="controls"><div><label for="hours">Available hours per day</label><input id="hours" type="number" min="1" max="12" value="2"></div><div><label for="days">Planning horizon (days)</label><input id="days" type="number" min="1" max="30" value="5"></div></div>
-<button id="runAgent" class="primary">✦ Run agent</button>
-</section>
-<section class="workspace">
-<div class="panel"><div class="sectionhead"><div><p class="eyebrow">AUTONOMOUS WORKFLOW</p><h2>Agent activity</h2></div><span id="status" class="status">Waiting</span></div><div id="activity" class="activity"><p class="empty">Your agent's planning, tool calls, and reflections will appear here.</p></div></div>
-<div class="panel"><div class="sectionhead"><div><p class="eyebrow">EXECUTION BOARD</p><h2>Your tasks</h2></div><button id="clearTasks" class="ghost">Clear</button></div><div id="tasks" class="tasks"><p class="empty">Tasks created by the agent will appear here.</p></div></div>
-</section>
-<section class="panel"><div class="sectionhead"><div><p class="eyebrow">FINAL OUTPUT</p><h2>Agent report</h2></div><button id="copyReport" class="ghost">Copy report</button></div><div id="report" class="report empty">Run the agent to generate a plan and report.</div></section>
-<footer>ORBIT · Agentic AI demonstration · Human-in-the-loop task planning</footer>
-</main><script src="app.js"></script>
-</body></html>
+  <section class="hero">
+    <p class="eyebrow">YOUR PERSONAL AI AGENT</p>
+    <h1>Turn goals into<br><em>done.</em></h1>
+    <p class="sub">
+      Tell Orbit what you need to achieve. It will make a plan,
+      use tools to organise tasks, check progress, and revise the plan.
+    </p>
+  </section>
+
+  <section class="panel setup">
+    <label for="apiKey">
+      Gemini API key
+      <span>(entered in this browser)</span>
+    </label>
+
+    <div class="keyrow">
+      <input
+        id="apiKey"
+        type="password"
+        autocomplete="off"
+        placeholder="Paste your Gemini API key"
+      >
+      <button type="button" id="toggleKey" class="ghost">Show</button>
+    </div>
+
+    <p class="hint">
+      Get your key from Google AI Studio. Do not share it in chat.
+    </p>
+  </section>
+
+  <section class="panel">
+    <label for="goal">What do you want to achieve?</label>
+
+    <textarea
+      id="goal"
+      rows="3"
+      placeholder="Example: Prepare for my FEM exam in 5 days. I have 2 hours per day and need to cover meshing, boundary conditions, and modal analysis."
+    ></textarea>
+
+    <div class="controls">
+      <div>
+        <label for="hours">Available hours per day</label>
+        <input id="hours" type="number" min="1" max="12" value="2">
+      </div>
+
+      <div>
+        <label for="days">Planning horizon (days)</label>
+        <input id="days" type="number" min="1" max="30" value="5">
+      </div>
+    </div>
+
+    <button type="button" id="runAgent" class="primary">
+      ✦ Run agent
+    </button>
+  </section>
+
+  <section class="workspace">
+    <div class="panel">
+      <div class="sectionhead">
+        <div>
+          <p class="eyebrow">AUTONOMOUS WORKFLOW</p>
+          <h2>Agent activity</h2>
+        </div>
+        <span id="status" class="status">Waiting</span>
+      </div>
+
+      <div id="activity" class="activity">
+        <p class="empty">
+          Your agent's planning, tool calls, and reflections will appear here.
+        </p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="sectionhead">
+        <div>
+          <p class="eyebrow">EXECUTION BOARD</p>
+          <h2>Your tasks</h2>
+        </div>
+        <button type="button" id="clearTasks" class="ghost">Clear</button>
+      </div>
+
+      <div id="tasks" class="tasks">
+        <p class="empty">Tasks created by the agent will appear here.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="sectionhead">
+      <div>
+        <p class="eyebrow">FINAL OUTPUT</p>
+        <h2>Agent report</h2>
+      </div>
+      <button type="button" id="copyReport" class="ghost">Copy report</button>
+    </div>
+
+    <div id="report" class="report empty">
+      Run the agent to generate a plan and report.
+    </div>
+  </section>
+
+  <footer>
+    ORBIT · Agentic AI demonstration · Human-in-the-loop task planning
+  </footer>
+</main>
+
+<script src="app.js"></script>
+</body>
+</
