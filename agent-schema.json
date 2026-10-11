@@ -1,701 +1,86 @@
-
-"use strict";
-
-/*
- * ORBIT — Agentic Study Planner
- * Gemini Interactions API + executable function tools.
- *
- * WARNING:
- * This is a public browser-based demonstration.
- * A key placed in this file is visible to everyone.
- * Do not use a sensitive production key.
- */
-
-const API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/interactions";
-
-const MODEL = "gemini-3.8-flash";
-
-// Replace the placeholder with your own Gemini API key.
-const GEMINI_API_KEY = "PASTE_YOUR_GEMINI_API_KEY_HERE";
-
-const state = {
-  tasks: [],
-  activity: [],
-  report: "",
-  running: false
-};
-
-const $ = (id) => document.getElementById(id);
-
-function logActivity(message) {
-  state.activity.push({
-    message: String(message),
-    time: new Date().toLocaleTimeString()
-  });
-
-  renderActivity();
-}
-
-function renderActivity() {
-  const container = $("activity");
-  container.replaceChildren();
-
-  if (!state.activity.length) {
-    const empty = document.createElement("p");
-    empty.className = "empty";
-    empty.textContent = "Agent activity will appear here.";
-    container.appendChild(empty);
-    return;
-  }
-
-  for (const item of state.activity) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "activity-item";
-
-    const time = document.createElement("span");
-    time.className = "time";
-    time.textContent = item.time;
-
-    const message = document.createElement("p");
-    message.textContent = item.message;
-
-    wrapper.append(time, message);
-    container.appendChild(wrapper);
-  }
-}
-
-function renderTasks() {
-  const container = $("tasks");
-  container.replaceChildren();
-
-  if (!state.tasks.length) {
-    const empty = document.createElement("p");
-    empty.className = "empty";
-    empty.textContent = "Tasks created by the agent will appear here.";
-    container.appendChild(empty);
-    return;
-  }
-
-  for (const task of state.tasks) {
-    const card = document.createElement("div");
-    card.className = "task" + (task.completed ? " completed" : "");
-
-    const top = document.createElement("div");
-    top.className = "task-top";
-
-    const title = document.createElement("h3");
-    title.textContent = task.title;
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = Boolean(task.completed);
-    checkbox.setAttribute("aria-label", "Complete " + task.title);
-
-    checkbox.addEventListener("change", () => {
-      task.completed = checkbox.checked;
-      renderTasks();
-
-      logActivity(
-        (task.completed ? "Completed: " : "Reopened: ") + task.title
-      );
-    });
-
-    top.append(title, checkbox);
-
-    const description = document.createElement("p");
-    description.textContent = task.description;
-
-    const meta = document.createElement("div");
-    meta.className = "task-meta";
-
-    const priority = document.createElement("span");
-    priority.className = "tag " + task.priority;
-    priority.textContent = task.priority.toUpperCase() + " PRIORITY";
-
-    const duration = document.createElement("span");
-    duration.className = "tag";
-    duration.textContent = task.hours + " hour(s)";
-
-    const day = document.createElement("span");
-    day.className = "tag";
-    day.textContent = "DAY " + task.day;
-
-    meta.append(priority, duration, day);
-    card.append(top, description, meta);
-    container.appendChild(card);
-  }
-}
-
-function setStatus(text, mode = "") {
-  const status = $("status");
-  status.textContent = text;
-  status.className = "status" + (mode ? " " + mode : "");
-}
-
-function setReport(text) {
-  state.report = String(text || "");
-
-  const report = $("report");
-  report.classList.remove("empty");
-  report.textContent = state.report || "No report generated yet.";
-}
-
-function getToolDefinitions() {
-  return [
-    {
-      type: "function",
-      name: "create_tasks",
-      description:
-        "Create study tasks for the user's goal. Keep daily study hours " +
-        "within the available limit and schedule tasks within the horizon.",
-      parameters: {
-        type: "object",
-        properties: {
-          tasks: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                description: { type: "string" },
-                hours: { type: "number" },
-                priority: {
-                  type: "string",
-                  enum: ["high", "medium", "low"]
-                },
-                day: { type: "integer" }
-              },
-              required: [
-                "title",
-                "description",
-                "hours",
-                "priority",
-                "day"
-              ],
-              additionalProperties: false
-            }
-          }
-        },
-        required: ["tasks"],
-        additionalProperties: false
-      }
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ORBIT Agent Workflow Schema",
+  "type": "object",
+  "required": [
+    "goal",
+    "planning_horizon_days",
+    "available_hours_per_day",
+    "workflow"
+  ],
+  "properties": {
+    "goal": {
+      "type": "string",
+      "minLength": 1
     },
-    {
-      type: "function",
-      name: "list_tasks",
-      description: "List current tasks and their completion status.",
-      parameters: {
-        type: "object",
-        properties: {},
-        additionalProperties: false
-      }
+    "planning_horizon_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30
     },
-    {
-      type: "function",
-      name: "prioritize_tasks",
-      description:
-        "Prioritize unfinished tasks by urgency, importance and prerequisites.",
-      parameters: {
-        type: "object",
-        properties: {
-          reason: { type: "string" }
-        },
-        required: ["reason"],
-        additionalProperties: false
-      }
+    "available_hours_per_day": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
     },
-    {
-      type: "function",
-      name: "reflect_progress",
-      description:
-        "Reflect on completion, gaps, risks and recommended adjustments.",
-      parameters: {
-        type: "object",
-        properties: {
-          reflection: { type: "string" }
-        },
-        required: ["reflection"],
-        additionalProperties: false
-      }
-    },
-    {
-      type: "function",
-      name: "write_report",
-      description: "Write and save the final study plan report.",
-      parameters: {
-        type: "object",
-        properties: {
-          report: { type: "string" }
-        },
-        required: ["report"],
-        additionalProperties: false
-      }
-    }
-  ];
-}
-
-function normaliseTask(raw, index, horizon) {
-  const rawPriority = String(raw.priority || "medium").toLowerCase();
-
-  const priority = ["high", "medium", "low"].includes(rawPriority)
-    ? rawPriority
-    : "medium";
-
-  const hours = Number(raw.hours);
-  const day = Number(raw.day);
-
-  return {
-    id: "task-" + Date.now() + "-" + index,
-    title: String(raw.title || "Study task").slice(0, 160),
-    description: String(raw.description || "").slice(0, 1200),
-    hours: Number.isFinite(hours) && hours > 0
-      ? Math.min(hours, 24)
-      : 1,
-    priority,
-    day: Number.isFinite(day)
-      ? Math.max(1, Math.min(Math.floor(day), horizon))
-      : 1,
-    completed: false
-  };
-}
-
-function executeTool(name, args, horizon, dailyHours) {
-  switch (name) {
-    case "create_tasks": {
-      if (!Array.isArray(args.tasks)) {
-        throw new Error("Expected a tasks array.");
-      }
-
-      if (args.tasks.length > 60) {
-        throw new Error("Maximum of 60 tasks per creation call.");
-      }
-
-      const tasks = args.tasks.map((task, index) =>
-        normaliseTask(task, index, horizon)
-      );
-
-      const dailyTotals = new Map();
-
-      for (const task of tasks) {
-        dailyTotals.set(
-          task.day,
-          (dailyTotals.get(task.day) || 0) + task.hours
-        );
-      }
-
-      const overloadedDays = [...dailyTotals.entries()]
-        .filter(([, total]) => total > dailyHours + 0.001)
-        .map(([day]) => day);
-
-      state.tasks = tasks;
-      renderTasks();
-
-      logActivity(
-        "create_tasks: created " + tasks.length + " task(s)."
-      );
-
-      if (overloadedDays.length) {
-        logActivity(
-          "Schedule warning: daily hour limit exceeded on day(s) " +
-          overloadedDays.join(", ") + "."
-        );
-      }
-
-      return {
-        success: true,
-        taskCount: tasks.length,
-        overloadedDays,
-        dailyHourLimit: dailyHours,
-        message: overloadedDays.length
-          ? "Adjust the schedule to fit the daily limit."
-          : "Tasks created successfully."
-      };
-    }
-
-    case "list_tasks": {
-      logActivity("list_tasks: inspecting current task board.");
-
-      return {
-        count: state.tasks.length,
-        tasks: state.tasks.map((task) => ({
-          title: task.title,
-          description: task.description,
-          hours: task.hours,
-          priority: task.priority,
-          day: task.day,
-          completed: task.completed
-        }))
-      };
-    }
-
-    case "prioritize_tasks": {
-      const rank = { high: 0, medium: 1, low: 2 };
-
-      state.tasks.sort((a, b) => {
-        if (a.completed !== b.completed) {
-          return Number(a.completed) - Number(b.completed);
-        }
-
-        return rank[a.priority] - rank[b.priority] || a.day - b.day;
-      });
-
-      renderTasks();
-
-      logActivity("prioritize_tasks: " + String(args.reason));
-
-      return {
-        success: true,
-        reason: String(args.reason),
-        order: state.tasks.map((task) => ({
-          title: task.title,
-          priority: task.priority,
-          day: task.day,
-          completed: task.completed
-        }))
-      };
-    }
-
-    case "reflect_progress": {
-      const total = state.tasks.length;
-      const completed = state.tasks.filter(
-        (task) => task.completed
-      ).length;
-
-      logActivity(
-        "reflect_progress: " + completed + "/" + total + " complete."
-      );
-
-      return {
-        reflection: String(args.reflection),
-        totalTasks: total,
-        completedTasks: completed,
-        pendingTasks: total - completed,
-        completionRate: total
-          ? Math.round(completed / total * 100)
-          : 0
-      };
-    }
-
-    case "write_report": {
-      setReport(args.report);
-      logActivity("write_report: final report generated.");
-
-      return {
-        success: true,
-        reportLength: String(args.report).length
-      };
-    }
-
-    default:
-      throw new Error("Unknown tool: " + name);
-  }
-}
-
-async function callGemini(apiKey, input, previousInteractionId) {
-  const payload = {
-    model: MODEL,
-    store: false,
-    tools: getToolDefinitions(),
-    input
-  };
-
-  if (previousInteractionId) {
-    payload.previous_interaction_id = previousInteractionId;
-  }
-
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey
-    },
-    body: JSON.stringify(payload)
-  });
-
-  let data;
-
-  try {
-    data = await response.json();
-  } catch {
-    throw new Error("Gemini returned an invalid JSON response.");
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data?.error?.message || "Gemini API error: HTTP " + response.status
-    );
-  }
-
-  return data;
-}
-
-function getFunctionCalls(data) {
-  return (Array.isArray(data.steps) ? data.steps : []).filter(
-    (step) => step && step.type === "function_call"
-  );
-}
-
-function getTextFromResponse(data) {
-  if (typeof data.output_text === "string" && data.output_text.trim()) {
-    return data.output_text.trim();
-  }
-
-  const pieces = [];
-
-  for (const step of Array.isArray(data.steps) ? data.steps : []) {
-    if (typeof step?.text === "string" && step.text.trim()) {
-      pieces.push(step.text.trim());
-    }
-
-    if (Array.isArray(step?.content)) {
-      for (const part of step.content) {
-        if (typeof part?.text === "string") {
-          pieces.push(part.text);
-        }
-      }
-    }
-  }
-
-  return pieces.join("\n").trim();
-}
-
-async function runAgent() {
-  if (state.running) return;
-
-  const apiKey = GEMINI_API_KEY.trim();
-  const goal = $("goal").value.trim();
-  const dailyHours = Number($("hours").value);
-  const horizon = Number($("days").value);
-
-  if (
-    !apiKey ||
-    apiKey === "PASTE_YOUR_GEMINI_API_KEY_HERE"
-  ) {
-    alert("Add your Gemini API key near the top of app.js.");
-    return;
-  }
-
-  if (!goal) {
-    alert("Enter a study goal first.");
-    $("goal").focus();
-    return;
-  }
-
-  if (
-    !Number.isFinite(dailyHours) ||
-    dailyHours < 1 ||
-    dailyHours > 12
-  ) {
-    alert("Hours per day must be between 1 and 12.");
-    return;
-  }
-
-  if (
-    !Number.isInteger(horizon) ||
-    horizon < 1 ||
-    horizon > 30
-  ) {
-    alert("Planning horizon must be between 1 and 30 days.");
-    return;
-  }
-
-  state.running = true;
-  state.tasks = [];
-  state.activity = [];
-  state.report = "";
-
-  renderTasks();
-  renderActivity();
-
-  $("report").textContent = "The agent is working...";
-  $("report").classList.add("empty");
-
-  $("runAgent").disabled = true;
-  $("runAgent").textContent = "Agent running...";
-  setStatus("Running", "running");
-
-  logActivity("Starting ORBIT agent.");
-  logActivity("Connecting to " + MODEL + ".");
-
-  const instructions = `
-You are ORBIT, an agentic study-planning assistant.
-
-USER GOAL:
-${goal}
-
-CONSTRAINTS:
-- Maximum study time per day: ${dailyHours} hours.
-- Planning horizon: ${horizon} days.
-
-MANDATORY WORKFLOW:
-1. Analyse the goal, topics, dependencies and deliverables.
-2. Call create_tasks to create specific actionable tasks.
-3. Check overloadedDays from the tool result. If any days exceed the hour limit, correct the schedule using create_tasks again.
-4. Call list_tasks to inspect the plan.
-5. Call prioritize_tasks to organise tasks by importance and urgency.
-6. Call reflect_progress to identify gaps and risks.
-7. Call write_report to save the final report.
-
-RULES:
-- Actually call the tools. Do not merely claim that you called them.
-- Keep every task within the planning horizon.
-- Make the total task hours per day realistic.
-- Do not claim the student completed work when only a plan was generated.
-- The final report must include a day-by-day schedule, priorities, risks and next actions.
-- After the tools have completed successfully, provide a short final response.
-`;
-
-  let previousInteractionId = null;
-  let input = instructions;
-  let finished = false;
-  const maxIterations = 12;
-
-  try {
-    for (let iteration = 0; iteration < maxIterations; iteration++) {
-      logActivity("Agent cycle " + (iteration + 1) + ".");
-
-      const data = await callGemini(
-        apiKey,
-        input,
-        previousInteractionId
-      );
-
-      if (data.id) {
-        previousInteractionId = data.id;
-      }
-
-      const calls = getFunctionCalls(data);
-
-      if (!calls.length) {
-        const text = getTextFromResponse(data);
-
-        if (text) {
-          logActivity("Agent returned its final response.");
-
-          if (!state.report) {
-            setReport(text);
+    "workflow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step",
+          "tool",
+          "purpose"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "tool": {
+            "type": "string",
+            "enum": [
+              "create_tasks",
+              "list_tasks",
+              "prioritize_tasks",
+              "reflect_progress",
+              "write_report"
+            ]
+          },
+          "purpose": {
+            "type": "string"
           }
         }
-
-        if (!state.report) {
-          setReport(
-            text || "The agent stopped without creating a report."
-          );
-        }
-
-        finished = true;
-        break;
       }
-
-      const results = [];
-
-      for (const call of calls) {
-        const name = call.name;
-        let args = call.arguments;
-
-        if (typeof args === "string") {
-          try {
-            args = JSON.parse(args);
-          } catch {
-            throw new Error("Invalid arguments returned for " + name);
-          }
-        }
-
-        if (!args || typeof args !== "object" || Array.isArray(args)) {
-          throw new Error("Invalid arguments returned for " + name);
-        }
-
-        logActivity("Agent requested tool: " + name + ".");
-
-        let result;
-
-        try {
-          result = executeTool(name, args, horizon, dailyHours);
-        } catch (error) {
-          result = {
-            success: false,
-            error: error.message
-          };
-
-          logActivity(name + " failed: " + error.message);
-        }
-
-        results.push({
-          type: "function_result",
-          name,
-          call_id: call.id,
-          result: [
-            {
-              type: "text",
-              text: JSON.stringify(result)
-            }
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "day": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 5
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "HIGH",
+            "MEDIUM",
+            "LOW"
           ]
-        });
+        },
+        "done": {
+          "type": "boolean"
+        }
       }
-
-      input = results;
     }
-
-    if (!finished) {
-      throw new Error(
-        "The agent reached its reasoning limit. Try a simpler goal."
-      );
-    }
-
-    if (!state.tasks.length) {
-      logActivity("Warning: the agent did not create any tasks.");
-    }
-
-    setStatus("Complete");
-    logActivity("ORBIT agent run finished.");
-
-  } catch (error) {
-    console.error("ORBIT error:", error);
-
-    setStatus("Error", "error");
-    logActivity("Error: " + error.message);
-
-    if (!state.report) {
-      setReport(
-        "The agent encountered an error:\n\n" +
-        error.message +
-        "\n\nCheck the API key, model availability and browser console."
-      );
-    }
-
-    alert("ORBIT error:\n" + error.message);
-
-  } finally {
-    state.running = false;
-    $("runAgent").disabled = false;
-    $("runAgent").textContent = "✦ Run agent";
   }
 }
-
-$("runAgent").addEventListener("click", runAgent);
-
-$("clearTasks").addEventListener("click", () => {
-  if (state.running) return;
-
-  state.tasks = [];
-  renderTasks();
-  logActivity("Task board cleared.");
-});
-
-$("copyReport").addEventListener("click", async () => {
-  if (!state.report) {
-    alert("There is no report to copy yet.");
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(state.report);
-    $("copyReport").textContent = "Copied!";
-  } catch {
-    alert("Clipboard access failed. Select and copy the report manually.");
-  }
-});
-
-renderActivity();
-renderTasks();
